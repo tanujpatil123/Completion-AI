@@ -1,0 +1,92 @@
+<html>
+  <head>
+    <title>Completion AI</title>
+  </head>
+  <body>
+    <h1>Completion AI</h1>
+
+    <input type="text" id="promptInput" placeholder="Enter your prompt here...">
+    <button id="generateButton">Generate</button>
+    <input type="file" id="imageInput" accept="image/*">
+    <div id="conversation"></div> 
+
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/generative-ai": "https://esm.run/@google/generative-ai"
+        }
+      }
+    </script>
+    <script type="module">
+      import { GoogleGenerativeAI } from "@google/generative-ai";
+
+      // Fetch your API_KEY
+      const API_KEY = "AIzaSyCJIjJeVIs1lK9GjbRBihEwD4AwpvMWGMk"; // Replace with your actual API key
+      // Reminder: This should only be for local testing
+
+      // Access your API key (see "Set up your API key" above)
+      const genAI = new GoogleGenerativeAI(API_KEY);
+
+      const promptInput = document.getElementById("promptInput");
+      const generateButton = document.getElementById("generateButton");
+      const imageInput = document.getElementById("imageInput");
+      // const outputDiv = document.getElementById("output"); // Removed
+      const conversationDiv = document.getElementById("conversation");
+
+      // Converts a File object to a GoogleGenerativeAI.Part object.
+      async function fileToGenerativePart(file) {
+        const base64EncodedDataPromise = new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result.split(',')[1]);
+          reader.readAsDataURL(file);
+        });
+        return {
+          inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
+        };
+      }
+
+      let chat;
+
+      generateButton.addEventListener("click", async () => {
+        const prompt = promptInput.value;
+
+        if (prompt.trim() === "") {
+          alert("Please enter a prompt.");
+          return;
+        }
+
+        const imageParts = await Promise.all(
+          [...imageInput.files].map(fileToGenerativePart)
+        );
+
+        if (!chat) {
+          // Initialize chat if it doesn't exist
+          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          chat = model.startChat({
+            generationConfig: {
+                temperature: 1,
+                top_p: 0.95,
+                top_k: 64,
+                max_output_tokens: 8192,
+                response_mime_type: "text/plain",
+              //maxOutputTokens: 100, // Uncomment and adjust if needed
+            },
+          });
+        }
+
+        const result = await chat.sendMessage(prompt, imageParts);
+        const response = await result.response;
+        const text = response.text();
+
+        // Display the conversation
+        conversationDiv.innerHTML += `<p><strong>You:</strong> ${prompt}</p><p><strong>AI:</strong> ${text}</p>`;
+
+        // outputDiv.textContent = text; // Removed
+        
+        // Clear input fields
+        promptInput.value = ""; 
+        imageInput.value = ""; 
+      });
+    </script>
+  </body>
+</html>
