@@ -1,92 +1,133 @@
-<html>
-  <head>
-    <title>Completion AI</title>
-  </head>
-  <body>
-    <h1>Completion AI</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Completion AI</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="styles.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    /* Include CSS styles here */
+  </style>
+  
+</head>
+<body>
+  <h1>Completion AI</h1>
 
-    <input type="text" id="promptInput" placeholder="Enter your prompt here...">
-    <button id="generateButton">Generate</button>
-    <input type="file" id="imageInput" accept="image/*">
-    <div id="conversation"></div> 
+  <!-- Dark/Light Mode Switch -->
+  <div id="themeSwitcher">
+    <label class="switch">
+      <input type="checkbox" id="themeToggle">
+      <span class="slider"></span>
+    </label>
+  </div>
 
-    <script type="importmap">
-      {
-        "imports": {
-          "@google/generative-ai": "https://esm.run/@google/generative-ai"
-        }
+  <!-- Conversation Box -->
+  <div id="conversation">
+    <div id="imagePreviewContainer" style="display: none;">
+      <img id="imagePreview" class="image-preview" src="" alt="Image Preview">
+    </div>
+  </div>
+
+  <!-- Form Section -->
+  <div class="form-section">
+    <div class="input-group">
+      <label for="imageInput" id="galleryIcon">
+        <i class="fas fa-image"></i>
+        <input type="file" id="imageInput" accept="image/*";capture="camera" style="display: none;" >
+      </label>
+
+      <input type="text" id="promptInput" placeholder="Enter your prompt here...">
+      
+      <button id="generateButton"><i class="material-icons" style="font-size:20px">send</i>
+      </button>
+      
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "@google/generative-ai": "https://esm.run/@google/generative-ai"
       }
-    </script>
-    <script type="module">
-      import { GoogleGenerativeAI } from "@google/generative-ai";
+    }
+  </script>
 
-      // Fetch your API_KEY
-      const API_KEY = "AIzaSyCJIjJeVIs1lK9GjbRBihEwD4AwpvMWGMk"; // Replace with your actual API key
-      // Reminder: This should only be for local testing
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-      // Access your API key (see "Set up your API key" above)
-      const genAI = new GoogleGenerativeAI(API_KEY);
+  <script type="module">
+    import { GoogleGenerativeAI } from "@google/generative-ai";
 
-      const promptInput = document.getElementById("promptInput");
-      const generateButton = document.getElementById("generateButton");
-      const imageInput = document.getElementById("imageInput");
-      // const outputDiv = document.getElementById("output"); // Removed
-      const conversationDiv = document.getElementById("conversation");
+    // Fetch your API_KEY
+    const API_KEY = "AIzaSyCJIjJeVIs1lK9GjbRBihEwD4AwpvMWGMk"; // Replace with your actual API key
 
-      // Converts a File object to a GoogleGenerativeAI.Part object.
-      async function fileToGenerativePart(file) {
-        const base64EncodedDataPromise = new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result.split(',')[1]);
-          reader.readAsDataURL(file);
-        });
-        return {
-          inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
+    const genAI = new GoogleGenerativeAI(API_KEY);
+
+    const promptInput = document.getElementById("promptInput");
+    const generateButton = document.getElementById("generateButton");
+    const imageInput = document.getElementById("imageInput");
+    const conversationDiv = document.getElementById("conversation");
+    const imagePreview = document.getElementById("imagePreview");
+    const imagePreviewContainer = document.getElementById("imagePreviewContainer");
+
+    // Handle image file selection
+    imageInput.addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          imagePreview.src = reader.result;
+          imagePreviewContainer.style.display = "block";
         };
+        reader.readAsDataURL(file);
       }
+    });
 
-      let chat;
-
-      generateButton.addEventListener("click", async () => {
-        const prompt = promptInput.value;
-
-        if (prompt.trim() === "") {
-          alert("Please enter a prompt.");
-          return;
-        }
-
-        const imageParts = await Promise.all(
-          [...imageInput.files].map(fileToGenerativePart)
-        );
-
-        if (!chat) {
-          // Initialize chat if it doesn't exist
-          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-          chat = model.startChat({
-            generationConfig: {
-                temperature: 1,
-                top_p: 0.95,
-                top_k: 64,
-                max_output_tokens: 8192,
-                response_mime_type: "text/plain",
-              //maxOutputTokens: 100, // Uncomment and adjust if needed
-            },
-          });
-        }
-
-        const result = await chat.sendMessage(prompt, imageParts);
-        const response = await result.response;
-        const text = response.text();
-
-        // Display the conversation
-        conversationDiv.innerHTML += `<p><strong>You:</strong> ${prompt}</p><p><strong>AI:</strong> ${text}</p>`;
-
-        // outputDiv.textContent = text; // Removed
-        
-        // Clear input fields
-        promptInput.value = ""; 
-        imageInput.value = ""; 
+    async function fileToGenerativePart(file) {
+      const base64EncodedDataPromise = new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.readAsDataURL(file);
       });
-    </script>
-  </body>
+      return {
+        inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
+      };
+    }
+
+    generateButton.addEventListener("click", async () => {
+      const prompt = promptInput.value;
+      const imageParts = await Promise.all(
+        [...imageInput.files].map(fileToGenerativePart)
+      );
+
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const result = await model.generateContent([prompt, ...imageParts]);
+      const response = await result.response;
+      const text = response.text();
+
+      // Display the conversation
+      conversationDiv.innerHTML += marked.parse(`<p><strong>You:</strong> ${prompt}</p><p><strong>AI:</strong> ${text}</p>`);
+
+      // Clear input fields
+      promptInput.value = "";
+      imageInput.value = "";
+      imagePreview.src = "";
+      imagePreviewContainer.style.display = "none"; 
+    });
+
+    // Dark/Light mode toggle
+    const themeToggle = document.getElementById("themeToggle");
+    const body = document.body;
+
+    themeToggle.addEventListener("change", () => {
+      if (themeToggle.checked) {
+        body.classList.add("dark-mode");
+      } else {
+        body.classList.remove("dark-mode");
+      }
+    });
+  </script>
+</body>
 </html>
